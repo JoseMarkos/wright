@@ -1,0 +1,24 @@
+/**
+ * @copyright      Copyright (C) 2013 - 2016 redCOMPONENT
+ * @author         redCOMPONENT
+ * @package        Template
+ *
+ */
+
+// Bootstrap
+@import "lib/bootstrap";
+
+// Template
+@import "common/fontface";
+@import "common/common";
+
+@import "layouts/header";
+@import "layouts/footer";
+
+@import "modules/left";
+@import "modules/right";
+
+@import "pages/home";
+
+// Responsive
+@import "responsive/responsive";

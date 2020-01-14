@@ -30,11 +30,10 @@ else
 	}
 }
 
+require_once dirname(__FILE__) . '/../vendor/autoload.php';
+
 // Includes WrightTemplateBase class for customizations to the template
 require_once dirname(__FILE__) . '/template/wrighttemplatebase.php';
-
-// Mobile Detect
-require_once dirname(__FILE__) . '/includes/mobile_detect.php';
 
 // Build LESS via PHP
 require_once dirname(__FILE__) . '/build/build.php';
@@ -81,10 +80,6 @@ class Wright
 
 	private $_baseVersion = '';
 
-	public $_showBrowserWarning = false;
-
-	public $_browserCompatibility = null;
-
 	/**
 	 * Main Wright function called to create the index.php file read by Joomla
 	 *
@@ -98,8 +93,7 @@ class Wright
 		$this->params = $document->params;
 		$this->baseurl = $document->baseurl;
 		$this->language = $document->language;
-		$this->browser = new WMobile_Detect;
-
+	
 		if ($app->isAdmin())
 		{
 			// If Wright is instanciated in backend, it stops loading
@@ -110,10 +104,6 @@ class Wright
 		$this->_urlTemplate = JURI::root() . 'templates/' . $this->document->template;
 		$this->_urlWright = $this->_urlTemplate . '/wright';
 		$this->_urlJS = $this->_urlWright . '/js';
-
-
-		// Browser library
-		include_once JPATH_SITE . '/templates/' . $this->document->template . '/wright/includes/browser.php';
 
 		$this->author = simplexml_load_file(JPATH_BASE . DIRECTORY_SEPARATOR . 'templates' . DIRECTORY_SEPARATOR . $this->document->template . DIRECTORY_SEPARATOR . 'templateDetails.xml')->author;
 
@@ -211,23 +201,7 @@ class Wright
 			JHtml::_('bootstrap.framework', true);
 		}
 
-		if ($this->document->params->get('modal', '1') == '1')
-		{
-			JHtml::_('behavior.modal');
-		}
-
-		// Load bootstrap JS - Not load on edit module
-		if ($input->getString('option', '') != 'com_config')
-		{
-			$this->addJSScript($this->_urlJS . '/bootstrap-uncompressed.js');
-			$this->addJSScript($this->_urlJS . '/utils.js');
-
-			if ($this->document->params->get('stickyFooter', 1))
-			{
-				$this->addJSScript($this->_urlJS . '/stickyfooter.js');
-			}
-		}
-		else
+		if ($input->getString('option', '') == 'com_config')
 		{
 			$this->addJSScript($this->_urlJS . '/edit.js');
 		}
@@ -238,77 +212,8 @@ class Wright
 			$this->addJSScriptDeclaration($this->document->params->get('headerscript'));
 		}
 
-		if ($this->document->params->get('documentationMode', '0') == '1')
-		{
-			$this->addJSScript($this->_urlTemplate . '/js/prettify.js');
-			$this->addJSScriptDeclaration('$window = jQuery(window); $window.prettyPrint && prettyPrint();');
-		}
-
-		// Set custom template theme for user
-		if (!is_null($input->getVar('templateTheme', null)))
-		{
-			$user->setParam('theme', $input->getVar('templateTheme'));
-			$user->save(true);
-		}
-
-		$this->_selectedStyle = $input->getVar('templateTheme', $user->getParam('theme', $this->document->params->get('style', 'generic')));
-
-		if (!$this->checkStyleFiles())
-		{
-			$this->_selectedStyle = $this->document->params->get('style', 'generic');
-			$this->checkStyleFiles();
-		}
-
-		$this->browserCompatibilityCheck();
-
 		// Build css
 		$this->css();
-	}
-
-	/**
-	 * Adds browser compatibility check if it's selected in the backed
-	 *
-	 * @return  void
-	 */
-	private function browserCompatibilityCheck()
-	{
-		if ($this->document->params->get('browsercompatibilityswitch', '0') == '1')
-		{
-			$session = JFactory::getSession();
-			$hideWarning = $session->get('hideWarning', 0, 'WrightTemplate_' . $this->document->template);
-
-			if (!$hideWarning)
-			{
-				$browser = new Browser;
-				$browserName = $browser->getBrowser();
-				$browserVersion = $browser->getVersion();
-
-				$this->_browserCompatibility = json_decode($this->document->params->get('browsercompatibility', ''));
-
-				if ($this->_browserCompatibility == '')
-				{
-					$this->_browserCompatibility = $this->setupDefaultBrowserCompatibility();
-				}
-
-				if (property_exists($this->_browserCompatibility, $browserName))
-				{
-					if (version_compare($browserVersion, $this->_browserCompatibility->$browserName->minimumVersion, 'lt'))
-					{
-						$this->_showBrowserWarning = true;
-					}
-				}
-				else
-				{
-					$this->_showBrowserWarning = true;
-				}
-			}
-
-			if ($this->_showBrowserWarning)
-			{
-				$this->addJSScriptDeclaration('jQuery("#wrightBCW").modal();');
-				$session->set('hideWarning', 1, 'WrightTemplate_' . $this->document->template);
-			}
-		}
 	}
 
 	/**
@@ -373,7 +278,7 @@ class Wright
 							$sheet = $this->_urlWright . '/css/' . $style;
 							break;
 						default:
-							$sheet = JURI::root() . 'templates/' . $this->document->template . '/css/' . $style;
+							$sheet = JURI::root() . 'templates/' . $this->document->template . '/dist/css/' . $style;
 					}
 
 					$this->document->addStyleSheet($sheet);
@@ -404,7 +309,7 @@ class Wright
 					}
 					else
 					{
-						$sheet = JURI::root() . 'templates/' . $this->document->template . '/css/' . $style;
+						$sheet = JURI::root() . 'templates/' . $this->document->template . '/dist/css/' . $style;
 					}
 
 					$css .= '<link rel="stylesheet" href="' . $sheet . '" type="text/css" />' . "\n";
@@ -424,17 +329,15 @@ class Wright
 	{
 		jimport('joomla.filesystem.file');
 		jimport('joomla.filesystem.folder');
-		jimport('joomla.environment.browser');
 
-		$browser = JBrowser::getInstance();
 		$doc = JFactory::getDocument();
 		$input = JFactory::getApplication()->input;
+		$version = $doc->params->get('version', 1);
 
 		$styles = Array();
 
-		$styles['template'][] = 'style.css';
-		$styles['wrighttemplatecss'][] = 'font-awesome.min.css';
-
+		$styles['template'][] = 'style.css?v=' . $version;
+		
 		if (version_compare(JVERSION, '3.0', 'ge'))
 		{
 			unset($doc->_styleSheets[$this->_urlTemplate . '/css/jui/bootstrap.min.css']);
@@ -447,26 +350,6 @@ class Wright
 			$styles['template'][] = 'docs.css';
 		}
 
-		// Add some stuff for lovely IE if needed
-		if ($browser->getBrowser() == 'msie')
-		{
-			// Switch to allow specific versions of IE to have additional sheets
-			$major = $browser->getMajor();
-
-			if ((int) $major <= 9)
-			{
-				$this->document->addScript(JURI::root() . 'templates/' . $this->document->template . '/wright/js/html5shiv.min.js');
-			}
-
-			if (is_file(JPATH_SITE . '/templates/' . $this->document->template . '/css/ie.css'))
-			{
-				$styles['ie'][] = 'ie.css';
-			}
-
-			if (is_file(JPATH_SITE . '/templates/' . $this->document->template . '/css/ie' . $major . '.css'))
-				$styles['ie'][] = 'ie' . $major . '.css';
-		}
-
 		if ($this->document->direction == 'rtl' && is_file(JPATH_SITE . '/templates/' . $this->document->template . '/css/rtl.css'))
 			$styles['template'][] = 'rtl.css';
 
@@ -476,7 +359,7 @@ class Wright
 			$styles['template'][] = 'custom.css';
 		}
 
-		if (is_file(JPATH_THEMES . '/' . $this->document->template . '/css/editor.css'))
+		if (is_file(JPATH_THEMES . '/' . $this->document->template . '/dist/css/editor.css'))
 		{
 			$styles['template'][] = 'editor.css';
 		}
@@ -721,7 +604,10 @@ class Wright
 	 */
 	public function generateJS()
 	{
-		$templateJsUrl = JURI::root() . 'templates/' . $this->document->template . '/js/template.js';
+		$versionjs = $this->document->params->get('versionjs', 1);
+
+		$templateJsUrl = JURI::root() . 'templates/' . $this->document->template . '/dist/js/js.js?v=' . $versionjs;
+
 		$script = "<script src='" . $templateJsUrl . "' type='text/javascript'></script>\n";
 
 		if ($this->_jsDeclarations)

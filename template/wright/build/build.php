@@ -2,9 +2,7 @@
 
 defined('_JEXEC') or die('You are not allowed to directly access this file');
 
-require_once dirname(__FILE__) . '/scss.inc.php';
-
-use Leafo\ScssPhp\Compiler;
+use ScssPhp\ScssPhp\Compiler;
 
 jimport('joomla.filesystem.file');
 jimport('joomla.filesystem.folder');
@@ -30,11 +28,11 @@ class BuildBootstrap
 		// Check rebuild SCSS
 		$buildScss = $document->params->get('build', false);
 
-		if ($buildScss == false && is_file(JPATH_THEMES . '/' . $document->template . '/css/style.css'))
+		if ($buildScss == false && is_file(JPATH_THEMES . '/' . $document->template . '/dist/css/style.css'))
 		{
-			$scss_path = JPATH_THEMES . '/' . $document->template . '/scss';
+			$scss_path = JPATH_THEMES . '/' . $document->template . '/src/scss';
 
-			$cachetime = filemtime(JPATH_THEMES . '/' . $document->template . '/css/style.css');
+			$cachetime = filemtime(JPATH_THEMES . '/' . $document->template . '/dist/css/style.css');
 
 			$files = JFolder::files($scss_path, '.scss', true, true);
 
@@ -60,48 +58,36 @@ class BuildBootstrap
 		{
 			$scss = new Compiler;
 
-			$scss->setFormatter("Leafo\ScssPhp\Formatter\Crunched");
+			$scss->setFormatter("ScssPhp\ScssPhp\Formatter\Crunched");
 
 			$scss->setImportPaths(
 				array(
-					JPATH_THEMES . '/' . $document->template . '/scss/',
-					JPATH_THEMES . '/' . $document->template . '/wright/build/',
-					JPATH_THEMES . '/' . $document->template . '/wright/build/libraries/bootstrap/stylesheets/',
-					JPATH_THEMES . '/' . $document->template . '/wright/build/libraries/redcomponent/'
+					JPATH_THEMES . '/' . $document->template . '/src/scss/',
+					JPATH_THEMES . '/' . $document->template . '/vendor/twbs/bootstrap/scss',
 				)
 			);
 
-
 			$columnsNumber = $document->params->get('columnsNumber', 12);
 
-			if (is_file(JPATH_THEMES . '/' . $document->template . '/css/style.css'))
+			if (is_file(JPATH_THEMES . '/' . $document->template . '/dist/css/style.css'))
 			{
-				unlink(JPATH_THEMES . '/' . $document->template . '/css/style.css');
+				unlink(JPATH_THEMES . '/' . $document->template . '/dist/css/style.css');
 			}
 
-			$ds = '@import "variables";';
-			$ds .= '$grid-columns: ' . $columnsNumber . ';';
-			$ds .= '@import "scss/bootstrap";';
-			$ds .= '@import "template"; ';
+			$ds = '@import "template"; ';
 
-			$ds .= '@import "scss/joomla";';
+			file_put_contents(JPATH_THEMES . '/' . $document->template . '/dist/css/style.css', $scss->compile($ds));
 
-			$ds .= '@import "scss/typography";';
-			$ds .= '@import "redcomponent"; ';
+			$ds = '@import "editor"; ';
 
-			if ($document->params->get('responsive', 1))
-			{
-				$ds .= '@import "template-responsive"; ';
-				$ds .= '@import "redcomponent-responsive"; ';
-			}
-			else
-			{
-				$ds .= '.container{width:$container-desktop !important} .navbar-nav > li {float: left;} ';
-			}
-
-			file_put_contents(JPATH_THEMES . '/' . $document->template . '/css/style.css', $scss->compile($ds));
+			file_put_contents(JPATH_THEMES . '/' . $document->template . '/dist/css/editor.css', $scss->compile($ds));
 
 			$document->params->set('build', false);
+
+			// Version
+			$version = $document->params->get('version', 1);
+			$version++;
+			$document->params->set('version', $version);
 
 			$newParams = new JRegistry(json_decode($document->params));
 
@@ -119,13 +105,13 @@ class BuildBootstrap
 		// Check rebuild JS
 		$buildJs = $document->params->get('buildjs', false);
 
-		$js_path = JPATH_THEMES . '/' . $document->template . '/js';
+		$js_path = JPATH_THEMES . '/' . $document->template . '/src/js';
 
 		$jsFiles = JFolder::files($js_path, '.js', true, true, array('.svn', 'CVS', '.DS_Store', '__MACOSX', 'template.js'));
 
-		if ($buildJs == false && is_file(JPATH_THEMES . '/' . $document->template . '/js/template.js'))
+		if ($buildJs == false && is_file(JPATH_THEMES . '/' . $document->template . '/dist/js/js.js'))
 		{
-			$cachetime = filemtime(JPATH_THEMES . '/' . $document->template . '/js/template.js');
+			$cachetime = filemtime(JPATH_THEMES . '/' . $document->template . '/dist/js/js.js');
 
 			if (count($jsFiles) > 0)
 			{
@@ -158,10 +144,15 @@ class BuildBootstrap
 					$buffer .= $this->getJsContent($file);
 				}
 
-				file_put_contents($js_path . '/template.js', $this->compress($buffer));
+				file_put_contents(JPATH_THEMES . '/' . $document->template . '/dist/js/js.js', $this->compress($buffer));
 			}
 
 			$document->params->set('buildjs', false);
+
+			// Version
+			$versionjs = $document->params->get('versionjs', 1);
+			$versionjs++;
+			$document->params->set('versionjs', $versionjs);
 
 			$newParams = new JRegistry(json_decode($document->params));
 
@@ -177,48 +168,56 @@ class BuildBootstrap
 		}
 	}
 
-	private function compress($string)
+	private function compress($js)
 	{
-		$string = str_replace('/// ', '///', $string);
-		$string = str_replace(',//', ', //', $string);
-		$string = str_replace('{//', '{ //', $string);
-		$string = str_replace('}//', '} //', $string);
-		$string = str_replace('/**/', '/*  */', $string);
-		$string = preg_replace("/\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n/", "", $string);
-		$string = preg_replace("/\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n/", "", $string);
-		$string = preg_replace("/\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n/", "", $string);
-		$string = preg_replace("/\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n/", "", $string);
-		$string = preg_replace("/\/\/.*\n\/\/.*\n\/\/.*\n\/\/.*\n/", "", $string);
-		$string = preg_replace("/\/\/.*\n\/\/.*\n\/\/.*\n/", "", $string);
-		$string = preg_replace('/\/\/.*\/\/\n/', '', $string);
-		$string = preg_replace("/\s\/\/\".*/", "", $string);
-		$string = preg_replace("/\/\/\n/", "\n", $string);
-		$string = preg_replace("/\/\/\s.*.\n/", "\n  \n", $string);
-		$string = preg_replace('/\/\/w[^w].*/', '', $string);
-		$string = preg_replace('/\/\/s[^s].*/', '', $string);
-		$string = preg_replace('/\/\/\*\*\*.*/', '', $string);
-		$string = preg_replace('/\/\/\*\s\*\s\*.*/', '', $string);
-		$string = preg_replace('!/\*[^\'."].*?\*/!s', '', $string);
-		$string = preg_replace('/\n\s*\n/', "\n", $string);
-		$string = preg_replace("/<!--.*-->/Us", "", $string);
-
-		return $string;
+		return \JShrink\Minifier::minify($js, array('flaggedComments' => false));
 	}
 
 	private function getJsContent($file)
 	{
-		// Initialize the buffer
-		$buffer = file_get_contents($file);
+		$read = false;
+		$buffer = '';
 
-		// Make sure the JS-content ends with ;
-		$buffer = trim($buffer);
-
-		if (preg_match('/;$/', $buffer) == false)
+		if (\JUri::isInternal($file))
 		{
-			$buffer .= ';' . "\n";
+			$path = parse_url($file, PHP_URL_PATH);
+
+			$readfile = JPATH_SITE . $path;
+
+			if (file_exists($readfile) && $handle = fopen($readfile,"r")) 
+			{
+				$read = true;
+
+				while (!feof($handle)) 
+				{
+					$buffer .= fread($handle, 8192);
+				}
+			}
+		}
+		
+		if ($read == false)
+		{
+			$arrContextOptions=array(
+				"ssl"=>array(
+					"verify_peer" => false,
+					"verify_peer_name" => false,
+				),
+			);  
+
+			$buffer = file_get_contents($file, false, stream_context_create($arrContextOptions));
 		}
 
-		$buffer .= "\n";
+		if (!empty($buffer))
+		{
+			$buffer = trim($buffer);
+
+			if (preg_match('/;$/', $buffer) == false)
+			{
+				$buffer .= ';' . "\n";
+			}
+
+			$buffer .= "\n";
+		}
 
 		return $buffer;
 	}

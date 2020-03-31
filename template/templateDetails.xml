@@ -5,9 +5,9 @@
 	<author>redCOMPONENT</author>
 	<authorEmail>mail@redcomponent.com</authorEmail>
 	<authorUrl>http://www.redcomponent.com</authorUrl>
-	<copyright>Copyright redComponent 2013 - 2016. All rights reserved</copyright>
+	<copyright>Copyright redComponent 2013 - 2020. All rights reserved</copyright>
 	<license>GNU/GPL v.3 or later.</license>
-	<version>4.1.1</version>
+	<version>4.1.2</version>
     <description>TPL_%%UPNAME%%_XML_DESCRIPTION</description>
 
 	<files>
@@ -18,12 +18,11 @@
 		<filename>templateDetails.xml</filename>
 		<filename>template_thumbnail.png</filename>
 		<filename>wrighttemplate.php</filename>
-		<folder>dist</folder>
 		<folder>favicons</folder>
 		<folder>html</folder>
 		<folder>images</folder>
-		<folder>js</folder>
-        <folder>scss</folder>
+		<folder>src</folder>
+		<folder>dist</folder>
         <folder>vendor</folder>
 		<folder>wright</folder>
 	</files>

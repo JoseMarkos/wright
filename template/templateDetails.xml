@@ -5,9 +5,9 @@
 	<author>redCOMPONENT</author>
 	<authorEmail>mail@redcomponent.com</authorEmail>
 	<authorUrl>http://www.redcomponent.com</authorUrl>
-	<copyright>Copyright redComponent 2013 - 2016. All rights reserved</copyright>
+	<copyright>Copyright redComponent 2013 - 2020. All rights reserved</copyright>
 	<license>GNU/GPL v.3 or later.</license>
-	<version>4.1.2</version>
+	<version>4.1.3</version>
     <description>TPL_%%UPNAME%%_XML_DESCRIPTION</description>
 
 	<files>
@@ -22,8 +22,8 @@
 		<folder>favicons</folder>
 		<folder>html</folder>
 		<folder>images</folder>
-		<folder>js</folder>
-        <folder>scss</folder>
+		<folder>node_modules</folder>
+		<folder>src</folder>
         <folder>vendor</folder>
 		<folder>wright</folder>
 	</files>
@@ -96,15 +96,7 @@
 
 
 			<fieldset name="layout">
-				<field name="columnsNumber"
-					type="text"
-					class="input-mini"
-					default="12"
-					label="TPL_%%UPNAME%%_COLUMNSNUMBER_LABEL"
-					description="TPL_%%UPNAME%%_COLUMNSNUMBER_DESC"
-					onchange="changeColumnsNumber(this.value)"
-					filter="integer" />
-
+			
 				<field name="columns"
 					type="columns"
 					default="sidebar1:3;main:6;sidebar2:3"
